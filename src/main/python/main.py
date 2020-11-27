@@ -100,19 +100,33 @@ class WidgetGallery(QDialog):
         self.showMaximized()
 
     def formulaFormatter(self, formula):
-        self.formatterDict = {'pi': chr(0x03C0), '^': ['<sup>', '</sup>']}
+        self.formatterDict = {'pi': chr(0x03C0), '^': ['<sup>', '</sup>'], '_': ['<sub>', '</sub>']}
         formulaList  = formula.split(' ')
         formulaListTemp = []
+        formattedFormula = ''
+        flag = 0
         for token in formulaList:
             if token == '^':
                 formulaListTemp.append(self.formatterDict[token][0])
-                formulaListTemp.append()
+                flag = 1
+            elif token == '_':
+                formulaListTemp.append(self.formatterDict[token][0])
+                flag = 2
             elif token in self.formatterDict.keys():
                 formulaListTemp.append(self.formatterDict[token])
+            elif flag == 1:
+                formulaListTemp.append(token)
+                formulaListTemp.append(self.formatterDict['^'][1])
+            elif flag == 2:
+                formulaListTemp.append(token)
+                formulaListTemp.append(self.formatterDict['_'][1])
             else:
                 formulaListTemp.append(token)
-        print(formulaListTemp)
-        return formula
+
+        for index in formulaListTemp:
+            formattedFormula += index + ' '
+
+        return formattedFormula
 
     def writeCSV(self):
         self.df.to_csv('F:\Tessaracte\src\main\python\database.csv', index=False)
@@ -122,7 +136,6 @@ class WidgetGallery(QDialog):
         self.df = pd.read_csv(r'F:\Tessaracte\src\main\python\database.csv')
         row = self.df.shape[0]
         col = self.df.shape[1]
-        print(chr(0x03C0))
         
         for i in range(row):
             value = []
