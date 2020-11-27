@@ -1,0 +1,4 @@
+ID,formula,description,labels,freq
+1000,1/2 * b * h,Area of triangle,"triangle, area",0
+1001,2 * pi * r,Circumference of Circle,"circle, circumference",0
+1002,pi * r ^ 2,Area of Circle,"circle, area",0

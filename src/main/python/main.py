@@ -1,255 +1,326 @@
-'''from fbs_runtime.application_context.PyQt5 import ApplicationContext
-from PyQt5.QtWidgets import QMainWindow
-
-import sys
-
-if __name__ == '__main__':
-    appctxt = ApplicationContext()       # 1. Instantiate ApplicationContext
-    window = QMainWindow()
-    window.showMaximized()
-    window.show()
-    exit_code = appctxt.app.exec_()      # 2. Invoke appctxt.app.exec_()
-    sys.exit(exit_code)'''
-
-#!/usr/bin/env python
-
-
-#############################################################################
-##
-## Copyright (C) 2013 Riverbank Computing Limited.
-## Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
-## All rights reserved.
-##
-## This file is part of the examples of PyQt.
-##
-## $QT_BEGIN_LICENSE:BSD$
-## You may use this file under the terms of the BSD license as follows:
-##
-## "Redistribution and use in source and binary forms, with or without
-## modification, are permitted provided that the following conditions are
-## met:
-##   * Redistributions of source code must retain the above copyright
-##     notice, this list of conditions and the following disclaimer.
-##   * Redistributions in binary form must reproduce the above copyright
-##     notice, this list of conditions and the following disclaimer in
-##     the documentation and/or other materials provided with the
-##     distribution.
-##   * Neither the name of Nokia Corporation and its Subsidiary(-ies) nor
-##     the names of its contributors may be used to endorse or promote
-##     products derived from this software without specific prior written
-##     permission.
-##
-## THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-## "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-## LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-## A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-## OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-## SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-## LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-## DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-## THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-## (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-## OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
-## $QT_END_LICENSE$
-##
-#############################################################################
-
 from fbs_runtime.application_context.PyQt5 import ApplicationContext
-from PyQt5.QtCore import QDateTime, Qt, QTimer
-from PyQt5.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateTimeEdit,
-        QDial, QDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
-        QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
-        QSlider, QSpinBox, QStyleFactory, QTableWidget, QTabWidget, QTextEdit,
-        QVBoxLayout, QWidget)
-
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+import pandas as pd
 import sys
-
+#"\u00b2"
 class WidgetGallery(QDialog):
     def __init__(self, parent=None):
         super(WidgetGallery, self).__init__(parent)
 
-        self.originalPalette = QApplication.palette()
+        overallLayout = QHBoxLayout(self)
 
-        styleComboBox = QComboBox()
-        styleComboBox.addItems(QStyleFactory.keys())
+        self.formulaDict = {}
+        self.readFormulas()
+        self.font2 = QFont()
+        self.font2.setPointSize(11)        
 
-        styleLabel = QLabel("&Style:")
-        styleLabel.setBuddy(styleComboBox)
+        self.symbols = ['x', 'y', '7', '8', '9', 'DEL', 'C', 'sin', 'cos', '4', '5', '6', '/', '*', 'tan', '^', '1', '2', '3', '+', '-', 'exp', 'log', '.', '0', '=', '(', ')']
+        self.buttons = {}
+        self.inputBox = QGridLayout()
+        self.equationListVbox = QVBoxLayout()
+        self.equationListVbox2 = QVBoxLayout()
+        
+        self.equationList = QTabWidget()
+        self.equationList.tab1 = QWidget()
+        self.equationList.tab2 = QWidget()
+        self.equationList.tab3 = QWidget()
+        self.equationList.addTab(self.equationList.tab1, "Formula Book")
+        self.equationList.addTab(self.equationList.tab2, "Favourites")
+        self.equationList.addTab(self.equationList.tab3, "Usage")
+        self.equationList.tab1.setLayout(self.formulaLayout())
+        self.equationList.tab2.setLayout(self.historyLayout())
+        self.equationList.setFixedWidth(300)
+        self.equationList.setFixedHeight(550)       
 
-        self.useStylePaletteCheckBox = QCheckBox("&Use style's standard palette")
-        self.useStylePaletteCheckBox.setChecked(True)
+        inputSpace = QTabWidget()
+        inputSpace.tab1 = QWidget()
+        inputSpace.tab2 = QWidget()
+        
+        inputSpace.addTab(inputSpace.tab1, "Input")
+        inputSpace.addTab(inputSpace.tab2, "Usage")
+        inputSpace.tab1.setLayout(self.inputsLayout())
+        ##inputSpace.tab2.setLayout(preferenceLayout(self))
+        inputSpace.tab1.setStatusTip("Input characters")
+        inputSpace.setFixedHeight(200)
 
-        disableWidgetsCheckBox = QCheckBox("&Disable widgets")
+        buttonSpace = QWidget()
+        buttonSpace.setLayout(self.buttonsLayout())
+        buttonSpace.setFixedWidth(300)
+        buttonSpace.setStatusTip("Interact")
 
-        self.createTopLeftGroupBox()
-        self.createTopRightGroupBox()
-        self.createBottomLeftTabWidget()
-        self.createBottomRightGroupBox()
-        self.createProgressBar()
+        self.tabPlot = QTabWidget()
+        self.tabPlot.tab1 = QWidget()
+        self.tabPlot.tab2 = QWidget()
+        self.tabPlot.addTab(self.tabPlot.tab1, "2D-plot")
+        self.tabPlot.addTab(self.tabPlot.tab2, "Usage")
+        ##self.tabPlot.tab1.setLayout(plotFigure2D(self))
+        self.tabPlot.tab1.setStatusTip("Visualize equation in 2D")
+        ##self.tabPlot.tab2.setLayout(plotFigure3D(self))
+        self.tabPlot.tab2.setStatusTip("Usage of Plot")
 
-        styleComboBox.activated[str].connect(self.changeStyle)
-        self.useStylePaletteCheckBox.toggled.connect(self.changePalette)
-        disableWidgetsCheckBox.toggled.connect(self.topLeftGroupBox.setDisabled)
-        disableWidgetsCheckBox.toggled.connect(self.topRightGroupBox.setDisabled)
-        disableWidgetsCheckBox.toggled.connect(self.bottomLeftTabWidget.setDisabled)
-        disableWidgetsCheckBox.toggled.connect(self.bottomRightGroupBox.setDisabled)
+        font = QFont()
+        font.setPointSize(16)
+        self.textedit = QTextEdit()
+        self.textedit.setFont(font)
+        self.textedit.setFixedHeight(60)
+        self.textedit.setStatusTip("Input equation")
 
-        topLayout = QHBoxLayout()
-        topLayout.addWidget(styleLabel)
-        topLayout.addWidget(styleComboBox)
-        topLayout.addStretch(1)
-        topLayout.addWidget(self.useStylePaletteCheckBox)
-        topLayout.addWidget(disableWidgetsCheckBox)
+        quickSolve = QWidget()
+        #quickSolve.setLayout(qSolveFigure(self))
+        quickSolve.setFixedHeight(45)
+        quickSolve.setStatusTip("Quick solver")
 
-        mainLayout = QGridLayout()
-        mainLayout.addLayout(topLayout, 0, 0, 1, 2)
-        mainLayout.addWidget(self.topLeftGroupBox, 1, 0)
-        mainLayout.addWidget(self.topRightGroupBox, 1, 1)
-        mainLayout.addWidget(self.bottomLeftTabWidget, 2, 0)
-        mainLayout.addWidget(self.bottomRightGroupBox, 2, 1)
-        mainLayout.addWidget(self.progressBar, 3, 0, 1, 2)
-        mainLayout.setRowStretch(1, 1)
-        mainLayout.setRowStretch(2, 1)
-        mainLayout.setColumnStretch(0, 1)
-        mainLayout.setColumnStretch(1, 1)
-        self.setLayout(mainLayout)
+        splitter5 = QSplitter(Qt.Vertical)
+        splitter5.addWidget(self.textedit)
+        splitter5.addWidget(quickSolve)
+        splitter5.addWidget(inputSpace)
 
-        self.setWindowTitle("Styles")
-        self.changeStyle('Windows')
+        splitter4 = QSplitter(Qt.Vertical)
+        splitter4.addWidget(buttonSpace)
+        splitter4.addWidget(self.equationList)
+
+        splitter3 = QSplitter(Qt.Horizontal)
+        splitter3.addWidget(self.tabPlot)
+
+        splitter2 = QSplitter(Qt.Vertical)
+        splitter2.addWidget(splitter5)
+        splitter2.addWidget(splitter3)
+
+        splitter1 = QSplitter(Qt.Horizontal)
+        splitter1.addWidget(splitter2)
+        splitter1.addWidget(splitter4)
+
+        overallLayout.addWidget(splitter1)
+        self.setLayout(overallLayout)
+
+        self.setWindowTitle("Tessaracte")
+        self.changeStyle('Fusion')
+        self.showMaximized()
+
+    def formulaFormatter(self, formula):
+        self.formatterDict = {'pi': chr(0x03C0), '^': ['<sup>', '</sup>']}
+        formulaList  = formula.split(' ')
+        formulaListTemp = []
+        for token in formulaList:
+            if token == '^':
+                formulaListTemp.append(self.formatterDict[token][0])
+                formulaListTemp.append()
+            elif token in self.formatterDict.keys():
+                formulaListTemp.append(self.formatterDict[token])
+            else:
+                formulaListTemp.append(token)
+        print(formulaListTemp)
+        return formula
+
+    def writeCSV(self):
+        self.df.to_csv('F:\Tessaracte\src\main\python\database.csv', index=False)
+        self.readFormulas()
+
+    def readFormulas(self):
+        self.df = pd.read_csv(r'F:\Tessaracte\src\main\python\database.csv')
+        row = self.df.shape[0]
+        col = self.df.shape[1]
+        print(chr(0x03C0))
+        
+        for i in range(row):
+            value = []
+            for j in range(1, col):
+                value.append(self.df.iloc[i][j])
+            self.formulaDict[self.df.iloc[i][0]] = value
+
+    def addFormula(self):
+        formula = self.updateFormula.toPlainText().split('|')
+        print(formula)
+        index = len(self.formulaDict) + 1000
+        self.df.loc[len(self.df.index)] = [index, formula[0], formula[1], formula[2], 0]
+        self.updateFormula.setText('')
+        self.writeCSV()
+
+    def searchFormula(self):
+        indexList = []
+        labelToSearch = self.updateFormula.toPlainText().strip(' ][')
+        self.myQListWidget.clear()
+
+        for i in range(len(self.formulaDict)):
+            if labelToSearch in self.formulaDict[1000+i][2] and labelToSearch != '' and len(indexList)>0:
+                indexList.append(1000 + i)
+                self.df['freq'][i] += 1
+
+        if labelToSearch == '':
+            index = 1000
+            for i in range(len(self.formulaDict)):
+                myQCustomQWidget = QCustomQWidget()
+                formulaDescription = str(self.formulaDict[index][1]).strip("][")
+                formulaDisplay = str(self.formulaDict[index][0]).strip("][")
+                myQCustomQWidget.setTextUp(formulaDescription)
+                myQCustomQWidget.setTextDown(formulaDisplay)
+                myQListWidgetItem = QListWidgetItem(self.myQListWidget)
+                myQListWidgetItem.setSizeHint(myQCustomQWidget.sizeHint())
+                self.myQListWidget.addItem(myQListWidgetItem)
+                self.myQListWidget.setItemWidget(myQListWidgetItem, myQCustomQWidget)
+                index += 1
+
+        elif len(indexList) == 0:
+            myQCustomQWidget = QCustomQWidget()
+            myQCustomQWidget.setTextUp('Formula/Consant Not Found')
+            myQCustomQWidget.setTextDown('Check for Misspelt words')
+            myQListWidgetItem = QListWidgetItem(self.myQListWidget)
+            myQListWidgetItem.setSizeHint(myQCustomQWidget.sizeHint())
+            self.myQListWidget.addItem(myQListWidgetItem)
+            self.myQListWidget.setItemWidget(myQListWidgetItem, myQCustomQWidget)
+        else:
+            index = 1000
+            for i in range(len(self.formulaDict)):
+                if index in indexList:
+                    myQCustomQWidget = QCustomQWidget()
+                    formulaDescription = str(self.formulaDict[index][1]).strip("][")
+                    formulaDisplay = str(self.formulaDict[index][0]).strip("][")
+                    myQCustomQWidget.setTextUp(formulaDescription)
+                    myQCustomQWidget.setTextDown(formulaDisplay)
+                    myQListWidgetItem = QListWidgetItem(self.myQListWidget)
+                    myQListWidgetItem.setSizeHint(myQCustomQWidget.sizeHint())
+                    self.myQListWidget.addItem(myQListWidgetItem)
+                    self.myQListWidget.setItemWidget(myQListWidgetItem, myQCustomQWidget)
+                index += 1
+
+        self.updateFormula.setText('')
+        self.writeCSV()
+        self.updateFavourites()
+
+    def updateFavourites(self):
+        self.myQListWidget2.clear()
+        index = 1000
+        for i in range(len(self.formulaDict)):
+            if int(self.df['freq'][i]) >= 1:
+                myQCustomQWidget = QCustomQWidget()
+                formulaDescription = str(self.formulaDict[index][1]).strip("][")
+                formulaDisplay = self.formulaFormatter(str(self.formulaDict[index][0]).strip("]["))
+                myQCustomQWidget.setTextUp(formulaDescription)
+                myQCustomQWidget.setTextDown(formulaDisplay)
+                myQListWidgetItem = QListWidgetItem(self.myQListWidget2)
+                myQListWidgetItem.setSizeHint(myQCustomQWidget.sizeHint())
+                self.myQListWidget2.addItem(myQListWidgetItem)
+                self.myQListWidget2.setItemWidget(myQListWidgetItem, myQCustomQWidget)
+            index += 1
 
     def changeStyle(self, styleName):
         QApplication.setStyle(QStyleFactory.create(styleName))
-        self.changePalette()
 
-    def changePalette(self):
-        if (self.useStylePaletteCheckBox.isChecked()):
-            QApplication.setPalette(QApplication.style().standardPalette())
-        else:
-            QApplication.setPalette(self.originalPalette)
+    def formulaLayout(self):
+        self.myQListWidget = QListWidget(self)
+        index = 1000
+        for i in range(len(self.formulaDict)):
+            myQCustomQWidget = QCustomQWidget()
+            formulaDescription = str(self.formulaDict[index][1]).strip("][")
+            formulaDisplay = self.formulaFormatter(str(self.formulaDict[index][0]).strip("]["))
+            myQCustomQWidget.setTextUp(formulaDescription)
+            myQCustomQWidget.setTextDown(formulaDisplay)
+            myQListWidgetItem = QListWidgetItem(self.myQListWidget)
+            myQListWidgetItem.setSizeHint(myQCustomQWidget.sizeHint())
+            self.myQListWidget.addItem(myQListWidgetItem)
+            self.myQListWidget.setItemWidget(myQListWidgetItem, myQCustomQWidget)
+            index += 1
+        self.equationListVbox.addWidget(self.myQListWidget)
+        #self.myQListWidget.itemClicked.connect(self.Clicked)
+        self.updateFormula = QTextEdit()
+        self.updateFormula.setFixedHeight(30)
+        self.addFormulaButton = QPushButton('Add Formula')
+        self.searchFormulaButton = QPushButton('Search Formula')
+        self.addFormulaButton.clicked.connect(self.addFormula)
+        self.searchFormulaButton.clicked.connect(self.searchFormula)
+        #self.clearButton.clicked.connect(self.clearHistory)
+        #self.clearButton.setStatusTip("Clear history")
+        buttonSplitter = QSplitter(Qt.Horizontal)
+        buttonSplitter.addWidget(self.addFormulaButton)
+        buttonSplitter.addWidget(self.searchFormulaButton)
+        self.equationListVbox.addWidget(self.updateFormula)
+        self.equationListVbox.addWidget(buttonSplitter)
+        return self.equationListVbox
 
-    def advanceProgressBar(self):
-        curVal = self.progressBar.value()
-        maxVal = self.progressBar.maximum()
-        self.progressBar.setValue(curVal + (maxVal - curVal) / 100)
+    def historyLayout(self):
+        self.myQListWidget2 = QListWidget(self)
+        index = 1000
+        for i in range(len(self.formulaDict)):
+            if int(self.df['freq'][i]) >= 1:
+                myQCustomQWidget = QCustomQWidget()
+                formulaDescription = str(self.formulaDict[index][1]).strip("][")
+                formulaDisplay = self.formulaFormatter(str(self.formulaDict[index][0]).strip("]["))
+                myQCustomQWidget.setTextUp(formulaDescription)
+                myQCustomQWidget.setTextDown(formulaDisplay)
+                myQListWidgetItem = QListWidgetItem(self.myQListWidget)
+                myQListWidgetItem.setSizeHint(myQCustomQWidget.sizeHint())
+                self.myQListWidget2.addItem(myQListWidgetItem)
+                self.myQListWidget2.setItemWidget(myQListWidgetItem, myQCustomQWidget)
+            index += 1
+        self.equationListVbox2.addWidget(self.myQListWidget2)
+        return self.equationListVbox2
 
-    def createTopLeftGroupBox(self):
-        self.topLeftGroupBox = QGroupBox("Group 1")
+    def inputsLayout(self):
+        inputLayout = QHBoxLayout(self)
+        inputWidget = QWidget()
+        for i in range(4):
+            for j in range(7):
+                if (i * 7 + j) < len(self.symbols):
+                    self.buttons[(i, j)] = QPushButton(self.symbols[i * 7 + j])
+                    self.buttons[(i, j)].setFont(self.font2)
+                    self.buttons[(i, j)].resize(100, 100)
+                    #self.buttons[(i, j)].clicked.connect(self.onInputPress(self.symbols[i * 10 + j]))
+                    self.inputBox.addWidget(self.buttons[(i, j)], i, j)
+        inputWidget.setLayout(self.inputBox)
+        inputLayout.addWidget(inputWidget)
+        return inputLayout
 
-        radioButton1 = QRadioButton("Radio button 1")
-        radioButton2 = QRadioButton("Radio button 2")
-        radioButton3 = QRadioButton("Radio button 3")
-        radioButton1.setChecked(True)
+    def buttonsLayout(self):
+        vbox = QVBoxLayout()
+        interactionModeLayout = QVBoxLayout()
+        self.interactionModeButton = QPushButton('Tessaracte')
+        #self.interactionModeButton.clicked.connect(self.interactionMode)
+        interactionModeLayout.addWidget(self.interactionModeButton)
+        interactionModeWidget = QWidget(self)
+        interactionModeWidget.setLayout(interactionModeLayout)
+        interactionModeWidget.setFixedSize(275, 50)
+        topButtonSplitter = QSplitter(Qt.Horizontal)
+        topButtonSplitter.addWidget(interactionModeWidget)
+        permanentButtons = QWidget(self)
+        topButtonSplitter.addWidget(permanentButtons)
+        self.bottomButton = QFrame()
+        self.buttonSplitter = QSplitter(Qt.Vertical)
+        self.buttonSplitter.addWidget(topButtonSplitter)
+        self.buttonSplitter.addWidget(self.bottomButton)
+        vbox.addWidget(self.buttonSplitter)
+        return vbox
 
-        checkBox = QCheckBox("Tri-state check box")
-        checkBox.setTristate(True)
-        checkBox.setCheckState(Qt.PartiallyChecked)
+class QCustomQWidget(QWidget):
 
-        layout = QVBoxLayout()
-        layout.addWidget(radioButton1)
-        layout.addWidget(radioButton2)
-        layout.addWidget(radioButton3)
-        layout.addWidget(checkBox)
-        layout.addStretch(1)
-        self.topLeftGroupBox.setLayout(layout)    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.textQVBoxLayout = QVBoxLayout()
+        self.textUpQLabel = QLabel()
+        self.textDownQLabel = QLabel()
+        font2 = QFont()
+        font2.setPointSize(12)
+        self.textUpQLabel.setFont(font2)
+        self.textDownQLabel.setFont(font2)
+        self.textQVBoxLayout.addWidget(self.textUpQLabel)
+        self.textQVBoxLayout.addWidget(self.textDownQLabel)
+        self.allQHBoxLayout = QHBoxLayout()
+        self.allQHBoxLayout.addLayout(self.textQVBoxLayout, 1)
+        self.setLayout(self.allQHBoxLayout)
+        self.textUpQLabel.setStyleSheet('''color: blue;''')
+        self.textDownQLabel.setStyleSheet('''color: black;''')
 
-    def createTopRightGroupBox(self):
-        self.topRightGroupBox = QGroupBox("Group 2")
+    def setTextUp(self, text):
+        self.textUpQLabel.setText(text)
 
-        defaultPushButton = QPushButton("Default Push Button")
-        defaultPushButton.setDefault(True)
-
-        togglePushButton = QPushButton("Toggle Push Button")
-        togglePushButton.setCheckable(True)
-        togglePushButton.setChecked(True)
-
-        flatPushButton = QPushButton("Flat Push Button")
-        flatPushButton.setFlat(True)
-
-        layout = QVBoxLayout()
-        layout.addWidget(defaultPushButton)
-        layout.addWidget(togglePushButton)
-        layout.addWidget(flatPushButton)
-        layout.addStretch(1)
-        self.topRightGroupBox.setLayout(layout)
-
-    def createBottomLeftTabWidget(self):
-        self.bottomLeftTabWidget = QTabWidget()
-        self.bottomLeftTabWidget.setSizePolicy(QSizePolicy.Preferred,
-                QSizePolicy.Ignored)
-
-        tab1 = QWidget()
-        tableWidget = QTableWidget(10, 10)
-
-        tab1hbox = QHBoxLayout()
-        tab1hbox.setContentsMargins(5, 5, 5, 5)
-        tab1hbox.addWidget(tableWidget)
-        tab1.setLayout(tab1hbox)
-
-        tab2 = QWidget()
-        textEdit = QTextEdit()
-
-        textEdit.setPlainText("Twinkle, twinkle, little star,\n"
-                              "How I wonder what you are.\n" 
-                              "Up above the world so high,\n"
-                              "Like a diamond in the sky.\n"
-                              "Twinkle, twinkle, little star,\n" 
-                              "How I wonder what you are!\n")
-
-        tab2hbox = QHBoxLayout()
-        tab2hbox.setContentsMargins(5, 5, 5, 5)
-        tab2hbox.addWidget(textEdit)
-        tab2.setLayout(tab2hbox)
-
-        self.bottomLeftTabWidget.addTab(tab1, "&Table")
-        self.bottomLeftTabWidget.addTab(tab2, "Text &Edit")
-
-    def createBottomRightGroupBox(self):
-        self.bottomRightGroupBox = QGroupBox("Group 3")
-        self.bottomRightGroupBox.setCheckable(True)
-        self.bottomRightGroupBox.setChecked(True)
-
-        lineEdit = QLineEdit('s3cRe7')
-        lineEdit.setEchoMode(QLineEdit.Password)
-
-        spinBox = QSpinBox(self.bottomRightGroupBox)
-        spinBox.setValue(50)
-
-        dateTimeEdit = QDateTimeEdit(self.bottomRightGroupBox)
-        dateTimeEdit.setDateTime(QDateTime.currentDateTime())
-
-        slider = QSlider(Qt.Horizontal, self.bottomRightGroupBox)
-        slider.setValue(40)
-
-        scrollBar = QScrollBar(Qt.Horizontal, self.bottomRightGroupBox)
-        scrollBar.setValue(60)
-
-        dial = QDial(self.bottomRightGroupBox)
-        dial.setValue(30)
-        dial.setNotchesVisible(True)
-
-        layout = QGridLayout()
-        layout.addWidget(lineEdit, 0, 0, 1, 2)
-        layout.addWidget(spinBox, 1, 0, 1, 2)
-        layout.addWidget(dateTimeEdit, 2, 0, 1, 2)
-        layout.addWidget(slider, 3, 0)
-        layout.addWidget(scrollBar, 4, 0)
-        layout.addWidget(dial, 3, 1, 2, 1)
-        layout.setRowStretch(5, 1)
-        self.bottomRightGroupBox.setLayout(layout)
-
-    def createProgressBar(self):
-        self.progressBar = QProgressBar()
-        self.progressBar.setRange(0, 10000)
-        self.progressBar.setValue(0)
-
-        timer = QTimer(self)
-        timer.timeout.connect(self.advanceProgressBar)
-        timer.start(1000)
-
+    def setTextDown(self, text):
+        self.textDownQLabel.setText(text)
 
 if __name__ == '__main__':
-    appctxt = ApplicationContext()
+    appctxt = QApplication([])       # 1. Instantiate ApplicationContext
+    appctxt.setWindowIcon(QIcon('Icon.ico'))
     gallery = WidgetGallery()
-    gallery.showMaximized()
     gallery.show()
-    sys.exit(appctxt.app.exec_())
+    exit_code = appctxt.exec_()      # 2. Invoke appctxt.exec_()
+    sys.exit(exit_code)
