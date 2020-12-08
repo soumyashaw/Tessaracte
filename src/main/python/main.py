@@ -68,7 +68,7 @@ class WidgetGallery(QDialog):
         self.textedit.setStatusTip("Input equation")
 
         quickSolve = QWidget()
-        #quickSolve.setLayout(qSolveFigure(self))
+        quickSolve.setLayout(self.qSolveAdapter())
         quickSolve.setFixedHeight(45)
         quickSolve.setStatusTip("Quick solver")
 
@@ -117,9 +117,11 @@ class WidgetGallery(QDialog):
             elif flag == 1:
                 formulaListTemp.append(token)
                 formulaListTemp.append(self.formatterDict['^'][1])
+                flag = 0
             elif flag == 2:
                 formulaListTemp.append(token)
                 formulaListTemp.append(self.formatterDict['_'][1])
+                flag = 0
             else:
                 formulaListTemp.append(token)
 
@@ -279,7 +281,7 @@ class WidgetGallery(QDialog):
                     self.buttons[(i, j)] = QPushButton(self.symbols[i * 7 + j])
                     self.buttons[(i, j)].setFont(self.font2)
                     self.buttons[(i, j)].resize(100, 100)
-                    #self.buttons[(i, j)].clicked.connect(self.onInputPress(self.symbols[i * 10 + j]))
+                    self.buttons[(i, j)].clicked.connect(self.onInputPress(self.symbols[i * 7 + j]))
                     self.inputBox.addWidget(self.buttons[(i, j)], i, j)
         inputWidget.setLayout(self.inputBox)
         inputLayout.addWidget(inputWidget)
@@ -289,7 +291,8 @@ class WidgetGallery(QDialog):
         vbox = QVBoxLayout()
         interactionModeLayout = QVBoxLayout()
         self.interactionModeButton = QPushButton('Tessaracte')
-        #self.interactionModeButton.clicked.connect(self.interactionMode)
+        self.interactionModeButton.setFont(self.font2)
+        self.interactionModeButton.clicked.connect(self.interactionMode)
         interactionModeLayout.addWidget(self.interactionModeButton)
         interactionModeWidget = QWidget(self)
         interactionModeWidget.setLayout(interactionModeLayout)
@@ -304,6 +307,55 @@ class WidgetGallery(QDialog):
         self.buttonSplitter.addWidget(self.bottomButton)
         vbox.addWidget(self.buttonSplitter)
         return vbox
+
+    def qSolveAdapter(self):
+        eqFormatterLayout = QVBoxLayout()
+        self.eqFormatterLabel = QLabel()
+        font3 = QFont("Helvetica")
+        font3.setPointSize(13)
+        font3.setItalic(True)
+        self.eqFormatterLabel.setFont(font3)
+        # self.eqFormatterLabel.setText('Test')
+        eqFormatterLayout.addWidget(self.eqFormatterLabel)
+        return eqFormatterLayout
+
+    def onInputPress(self, name):
+        def calluser():
+            if name == 'C':
+                self.textedit.setText('')
+            elif name == 'DEL':
+                cursor = self.textedit.textCursor()
+                cursor.deletePreviousChar()
+            else:
+                self.textedit.insertPlainText(str(name))
+        return calluser
+
+    def interactionMode(self):
+        # Show buttons for solving
+        equation = self.formulaFormatter(self.textedit.toPlainText())
+        self.eqFormatterLabel.setText(equation)
+        try:
+            self.quadraticSolver(self.textedit.toPlainText())
+        except:
+            self.eqFormatterLabel.setText('Error in Input Equation')
+
+    def quadraticSolver(self, equation):
+        equation = equation.split(' ')
+        a = float(equation[int(equation.index('^')-3)])
+        b = float(equation[int(equation.index('^')+3)])
+        c = float(equation[int(equation.index('^')+7)])
+        d = b ** 2 - 4 * a * c
+        if d >= 0:
+            p = (-b + d ** 0.5) / 2 * a
+            q = (-b - d ** 0.5) / 2 * a
+            print("Roots are", p,'&', q)
+
+        if d < 0:
+            r1 = -b / (2 * a)
+            i1 = d ** 0.5 / (2 * a)
+            r2 = -b / (2 * a)
+            i2 = d ** 0.5 / (2 * a)
+            print("roots are", round(r1, 2) + i1, round(r2, 2) - i2)
 
 class QCustomQWidget(QWidget):
 
